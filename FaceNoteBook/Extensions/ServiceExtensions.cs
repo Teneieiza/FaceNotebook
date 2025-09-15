@@ -8,24 +8,14 @@ namespace FaceNoteBook.Extensions
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration config)
         {
-            var connStr = config["DB_CONNECTION"];
-
-            if (string.IsNullOrEmpty(connStr))
-            {
-                connStr = Environment.GetEnvironmentVariable("DB_CONNECTION");
-            }
-
-            Console.WriteLine($"DB_CONNECTION = {connStr}");
-
             services.AddDbContext<UserDataContext>(options =>
-                options.UseNpgsql(connStr)
+                options.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION"))
             );
 
-            // Register services
+            // เพิ่ม service อื่นๆตรงนี้
             services.AddScoped<IUserService, UserService>();
 
             return services;
         }
-
     }
 }
