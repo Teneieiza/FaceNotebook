@@ -145,10 +145,9 @@ public class UserService : IUserService
     private static async Task<string> HashPasswordAsync(string password)
     {
         var salt = new byte[32];
-        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(salt);
-        }
+        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        rng.GetBytes(salt);
+        
 
         var passwordBytes = Encoding.UTF8.GetBytes(password);
 
