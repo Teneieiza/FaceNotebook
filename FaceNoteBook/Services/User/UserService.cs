@@ -16,6 +16,7 @@ public class UserService : IUserService
         _context = context;
     }
 
+// GET All users
     public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
     {
         var users = await _context.Users
@@ -25,12 +26,14 @@ public class UserService : IUserService
         return users.Select(MapToResponseDto);
     }
 
+// GET users by ID
     public async Task<UserResponseDto?> GetUserByIdAsync(Guid id)
-    {
-        var user = await _context.Users.FindAsync(id);
-        return user == null ? null : MapToResponseDto(user);
-    }
+  {
+    var user = await _context.Users.FindAsync(id);
+    return user == null ? null : MapToResponseDto(user);
+  }
 
+// GET users by Email
     public async Task<UserResponseDto?> GetUserByEmailAsync(string email)
     {
         var user = await _context.Users
@@ -39,6 +42,7 @@ public class UserService : IUserService
         return user == null ? null : MapToResponseDto(user);
     }
 
+// Create new user
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
     {
         if (await EmailExistsAsync(createUserDto.Email))
@@ -63,6 +67,7 @@ public class UserService : IUserService
         return MapToResponseDto(user);
     }
 
+// Update user
     public async Task<UserResponseDto?> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto)
     {
         var user = await _context.Users.FindAsync(id);
@@ -99,6 +104,7 @@ public class UserService : IUserService
         return MapToResponseDto(user);
     }
 
+// Delete user
     public async Task<bool> DeleteUserAsync(Guid id)
     {
         var user = await _context.Users.FindAsync(id);
@@ -112,22 +118,25 @@ public class UserService : IUserService
         return true;
     }
 
+// Check user exists by ID
     public async Task<bool> UserExistsAsync(Guid id)
     {
         return await _context.Users.AnyAsync(u => u.Id == id);
     }
 
+// Check user exists by Email
     public async Task<bool> EmailExistsAsync(string email)
     {
         return await _context.Users.AnyAsync(u => u.Email == email);
     }
 
+// Verify user password
     public async Task<bool> VerifyPasswordAsync(string email, string password)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user == null)
         {
-            return false;
+          throw new InvalidOperationException("Password incorrect or user not found");
         }
 
         return await VerifyHashedPasswordAsync(password, user.Password);
