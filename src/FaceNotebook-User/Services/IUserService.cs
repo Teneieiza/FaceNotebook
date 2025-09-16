@@ -8,7 +8,9 @@ public interface IUserService
     Task<UserResponseDto?> GetUserByIdAsync(Guid id);
     Task<UserResponseDto?> GetUserByEmailAsync(string email);
     Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto);
-    Task<UserResponseDto?> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto);
+    Task<UserResponseDto?> UpdateDetailAsync(Guid id, UpdateDetailDto dto);
+    Task<UserResponseDto?> UpdateEmailAsync(Guid id, UpdateEmailDto dto);
+    Task<UserResponseDto?> UpdatePasswordAsync(Guid id, UpdatePasswordDto dto);
     Task<bool> DeleteUserAsync(Guid id);
     Task<bool> UserExistsAsync(Guid id);
     Task<bool> EmailExistsAsync(string email);
