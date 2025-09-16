@@ -1,5 +1,5 @@
-using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 public class ErrorHandlerMiddleware
 {
@@ -29,27 +29,49 @@ public class ErrorHandlerMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        HttpStatusCode status;
+        int statusCode;
         string message;
 
         switch (exception)
         {
             case InvalidOperationException:
-                status = HttpStatusCode.Conflict;
+                statusCode = StatusCodes.Status400BadRequest;
                 message = exception.Message;
                 break;
+            case DbUpdateException:
+                statusCode = StatusCodes.Status400BadRequest;
+                message = "Database update failed. Please check your data.";
+                break;
+            case UnauthorizedAccessException:
+                statusCode = StatusCodes.Status401Unauthorized;
+                message = "Unauthorized access.";
+                break;
+            case AccessViolationException:
+                statusCode = StatusCodes.Status403Forbidden;
+                message = "Forbidden access.";
+                break;
             case KeyNotFoundException:
-                status = HttpStatusCode.NotFound;
+                statusCode = StatusCodes.Status404NotFound;
+                message = exception.Message;
+                break;
+            case DuplicateWaitObjectException:
+                statusCode = StatusCodes.Status409Conflict;
                 message = exception.Message;
                 break;
             default:
-                status = HttpStatusCode.InternalServerError;
+                statusCode = StatusCodes.Status500InternalServerError;
                 message = "An unexpected error occurred.";
                 break;
         }
 
-        context.Response.StatusCode = (int)status;
-        var result = JsonSerializer.Serialize(new { error = message });
+        context.Response.StatusCode = statusCode;
+
+        var result = JsonSerializer.Serialize(new
+        {
+            status = statusCode,
+            message
+        });
+
         return context.Response.WriteAsync(result);
     }
 }
