@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using FaceNoteBook.Data;
 using FaceNoteBook.Models;
 using FaceNoteBook.DTOs;
-using Konscious.Security.Cryptography;
-using System.Text;
+using FaceNoteBook.Utils;
+using System.Text.RegularExpressions;
 
 namespace FaceNoteBook.Services;
 
@@ -15,6 +15,8 @@ public class UserService : IUserService
     {
         _context = context;
     }
+
+//------------------------------CRUD-------------------------------------
 
 // GET All users
     public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
@@ -28,10 +30,10 @@ public class UserService : IUserService
 
 // GET users by ID
     public async Task<UserResponseDto?> GetUserByIdAsync(Guid id)
-  {
-    var user = await _context.Users.FindAsync(id);
-    return user == null ? null : MapToResponseDto(user);
-  }
+    {
+        var user = await _context.Users.FindAsync(id);
+        return user == null ? null : MapToResponseDto(user);
+    }
 
 // GET users by Email
     public async Task<UserResponseDto?> GetUserByEmailAsync(string email)
@@ -50,7 +52,15 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email already exists");
         }
 
-        var hashedPassword = await HashPasswordAsync(createUserDto.Password);
+            var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$");
+        if (!passwordRegex.IsMatch(createUserDto.Password))
+        {
+            throw new InvalidOperationException(
+                "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, and one number."
+            );
+        }
+
+        var hashedPassword = await PasswordHasher.HashPasswordAsync(createUserDto.Password);
 
         var user = new User
         {
@@ -67,38 +77,65 @@ public class UserService : IUserService
         return MapToResponseDto(user);
     }
 
-// Update user
-    public async Task<UserResponseDto?> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto)
+// Update user details
+    public async Task<UserResponseDto?> UpdateDetailAsync(Guid id, UpdateDetailDto dto)
     {
         var user = await _context.Users.FindAsync(id);
-        if (user == null)
-        {
-            return null;
-        }
+        if (user == null) return null;
 
-        if (!string.IsNullOrEmpty(updateUserDto.Email) && 
-            updateUserDto.Email != user.Email && 
-            await EmailExistsAsync(updateUserDto.Email))
+        user.Name = dto.Name;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return MapToResponseDto(user);
+    }
+
+// Update user email
+    public async Task<UserResponseDto?> UpdateEmailAsync(Guid id, UpdateEmailDto dto)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return null;
+
+        if (await EmailExistsAsync(dto.Email) && dto.Email != user.Email)
         {
             throw new InvalidOperationException("Email already exists");
         }
 
-        if (!string.IsNullOrEmpty(updateUserDto.Name))
+        user.Email = dto.Email;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return MapToResponseDto(user);
+    }
+
+// Update user password
+    public async Task<UserResponseDto?> UpdatePasswordAsync(Guid id, UpdatePasswordDto dto)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return null;
+
+        var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$");
+        if (!passwordRegex.IsMatch(dto.NewPassword))
         {
-            user.Name = updateUserDto.Name;
+            throw new InvalidOperationException(
+                "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, and one number."
+            );
         }
 
-        if (!string.IsNullOrEmpty(updateUserDto.Email))
+        var oldPasswordValid = await PasswordHasher.VerifyHashedPasswordAsync(dto.OldPassword, user.Password);
+        if (!oldPasswordValid)
         {
-            user.Email = updateUserDto.Email;
+            throw new InvalidOperationException("Old password is incorrect");
         }
 
-        if (!string.IsNullOrEmpty(updateUserDto.Password))
+        var newPasswordSameAsOld = await PasswordHasher.VerifyHashedPasswordAsync(dto.NewPassword, user.Password);
+        if (newPasswordSameAsOld)
         {
-            user.Password = await HashPasswordAsync(updateUserDto.Password);
+            throw new InvalidOperationException("New password cannot be the same as the old password");
         }
 
-        user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+        user.Password = await PasswordHasher.HashPasswordAsync(dto.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return MapToResponseDto(user);
@@ -118,6 +155,10 @@ public class UserService : IUserService
         return true;
     }
 
+
+
+    //------------------------------Checking-------------------------------------
+
 // Check user exists by ID
     public async Task<bool> UserExistsAsync(Guid id)
     {
@@ -136,68 +177,10 @@ public class UserService : IUserService
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user == null)
         {
-          throw new InvalidOperationException("Password incorrect or user not found");
+            throw new InvalidOperationException("Password incorrect or user not found");
         }
 
-        return await VerifyHashedPasswordAsync(password, user.Password);
-    }
-
-    private static async Task<string> HashPasswordAsync(string password)
-    {
-        var salt = new byte[32];
-        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-        rng.GetBytes(salt);
-        
-
-        var passwordBytes = Encoding.UTF8.GetBytes(password);
-
-        using var argon2 = new Argon2id(passwordBytes)
-        {
-            Salt = salt,
-            DegreeOfParallelism = 8,
-            MemorySize = 65536,
-            Iterations = 4
-        };
-
-        var hash = await argon2.GetBytesAsync(32);
-
-        var combined = new byte[salt.Length + hash.Length];
-        Buffer.BlockCopy(salt, 0, combined, 0, salt.Length);
-        Buffer.BlockCopy(hash, 0, combined, salt.Length, hash.Length);
-
-        // แปลงเป็น Base64 string
-        return Convert.ToBase64String(combined);
-    }
-
-    private static async Task<bool> VerifyHashedPasswordAsync(string password, string hashedPassword)
-    {
-        try
-        {
-            var combined = Convert.FromBase64String(hashedPassword);
-
-            var salt = new byte[32];
-            var hash = new byte[32];
-            Buffer.BlockCopy(combined, 0, salt, 0, 32);
-            Buffer.BlockCopy(combined, 32, hash, 0, 32);
-
-            var passwordBytes = Encoding.UTF8.GetBytes(password);
-
-            using var argon2 = new Argon2id(passwordBytes)
-            {
-                Salt = salt,
-                DegreeOfParallelism = 8,
-                MemorySize = 65536,
-                Iterations = 4
-            };
-
-            var newHash = await argon2.GetBytesAsync(32);
-
-            return hash.SequenceEqual(newHash);
-        }
-        catch
-        {
-            return false;
-        }
+        return await PasswordHasher.VerifyHashedPasswordAsync(password, user.Password);
     }
 
     private static UserResponseDto MapToResponseDto(User user)
