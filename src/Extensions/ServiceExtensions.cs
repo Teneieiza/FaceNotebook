@@ -1,5 +1,6 @@
 using FaceNoteBook.Data;
 using FaceNoteBook.Services;
+using TodoList.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace FaceNoteBook.Extensions
@@ -14,6 +15,7 @@ namespace FaceNoteBook.Extensions
 
             // เพิ่ม service อื่นๆตรงนี้
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<ITodoService, TodoService>();
 
             return services;
         }
