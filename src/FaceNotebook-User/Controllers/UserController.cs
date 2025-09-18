@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using FaceNoteBook.Services;
 using FaceNoteBook.DTOs;
-using FaceNoteBook.Helper;
+using FaceNoteBook.Utils;
 
 namespace FaceNoteBook.Controllers;
 
