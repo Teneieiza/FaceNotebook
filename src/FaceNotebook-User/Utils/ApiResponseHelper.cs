@@ -1,7 +1,7 @@
 using FaceNoteBook.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FaceNoteBook.Helper
+namespace FaceNoteBook.Utils
 {
     public static class ApiResponseHelper
     {
