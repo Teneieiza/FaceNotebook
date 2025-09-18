@@ -84,7 +84,7 @@ public class UserService : IUserService
         if (user == null) return null;
 
         user.Name = dto.Name;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
         await _context.SaveChangesAsync();
         return MapToResponseDto(user);
@@ -102,7 +102,7 @@ public class UserService : IUserService
         }
 
         user.Email = dto.Email;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
         await _context.SaveChangesAsync();
         return MapToResponseDto(user);
@@ -135,7 +135,7 @@ public class UserService : IUserService
         }
 
         user.Password = await PasswordHasher.HashPasswordAsync(dto.NewPassword);
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
         await _context.SaveChangesAsync();
         return MapToResponseDto(user);
