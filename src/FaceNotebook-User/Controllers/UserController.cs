@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using FaceNoteBook.Services;
 using FaceNoteBook.DTOs;
 using FaceNoteBook.Utils;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FaceNoteBook.Controllers;
 
 [ApiController]
 [Route("api/users")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -48,6 +50,7 @@ public class UsersController : ControllerBase
 
     // POST: api/users
     [HttpPost]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<UserResponseDto>>> CreateUser(CreateUserDto createUserDto)
     {
         if (!ModelState.IsValid)
@@ -111,6 +114,7 @@ public class UsersController : ControllerBase
 
     // POST: api/users/verify
     [HttpPost("verify")]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<object>>> VerifyPassword([FromBody] UserLoginDto loginDto)
     {
         if (!ModelState.IsValid)
