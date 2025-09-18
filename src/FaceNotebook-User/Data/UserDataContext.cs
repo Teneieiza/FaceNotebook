@@ -16,41 +16,51 @@ public class UserDataContext : DbContext
     modelBuilder.Entity<User>(entity =>
     {
         entity.ToTable("users");
-        
+
         entity.HasKey(e => e.Id);
-        
+
         entity.Property(e => e.Id)
             .HasColumnName("id");
-        
+
         entity.Property(e => e.Name)
             .IsRequired()
             .HasMaxLength(50)
             .HasColumnName("name");
-        
+
         entity.Property(e => e.Email)
             .IsRequired()
             .HasMaxLength(50)
             .HasColumnName("email");
-        
+
         entity.HasIndex(e => e.Email)
             .IsUnique();
-        
+
         entity.Property(e => e.Password)
             .IsRequired()
             .HasMaxLength(150)
             .HasColumnName("password");
-        
+
         entity.Property(e => e.CreatedAt)
             .HasColumnName("createdat")
             .HasColumnType("timestamp");
-        
+
         entity.Property(e => e.UpdatedAt)
             .HasColumnName("updatedat")
             .HasColumnType("timestamp");
+            
+        entity.Property(e => e.RefreshToken)
+            .HasColumnName("refreshtoken")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        entity.Property(e => e.RefreshTokenExpiryTime)
+            .HasColumnName("refreshtokenexpirytime")
+            .HasColumnType("timestamp")
+            .IsRequired(false);
     });
     }
     
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries()
             .Where(e => e.State == EntityState.Modified);
@@ -59,10 +69,19 @@ public class UserDataContext : DbContext
         {
             if (entry.Entity is User user)
             {
-                user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+                var onlyRefreshTokenChanged = entry.Properties
+                    .All(p => p.Metadata.Name == nameof(User.RefreshToken) 
+                            || p.Metadata.Name == nameof(User.RefreshTokenExpiryTime)
+                            || !p.IsModified);
+
+                if (!onlyRefreshTokenChanged)
+                {
+                    user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+                }
             }
         }
 
         return base.SaveChangesAsync(cancellationToken);
     }
+
 }
