@@ -1,24 +1,20 @@
 using FaceNoteBook.Extensions;
 using DotNetEnv;
-
-var builder = WebApplication.CreateBuilder(args);
+using FaceNoteBook.Middleware;
 
 Env.Load();
 
+var builder = WebApplication.CreateBuilder(args);
+
 // Add services
 builder.Services.AddControllers();
-builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddDatabaseServices(builder.Configuration);
+builder.Services.AddScopedServices();
+builder.Services.AddCorsServices();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-        .AllowAnyMethod()
-        .AllowAnyHeader();
-    });
-});
+
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -31,6 +27,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
