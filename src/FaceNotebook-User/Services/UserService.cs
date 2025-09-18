@@ -10,15 +10,17 @@ namespace FaceNoteBook.Services;
 public class UserService : IUserService
 {
     private readonly UserDataContext _context;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public UserService(UserDataContext context)
+    public UserService(UserDataContext context, IPasswordHasher passwordHasher)
     {
         _context = context;
+        _passwordHasher = passwordHasher;
     }
 
-//------------------------------CRUD-------------------------------------
+    //------------------------------CRUD-------------------------------------
 
-// GET All users
+    // GET All users
     public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
     {
         var users = await _context.Users
@@ -28,23 +30,23 @@ public class UserService : IUserService
         return users.Select(MapToResponseDto);
     }
 
-// GET users by ID
+    // GET users by ID
     public async Task<UserResponseDto?> GetUserByIdAsync(Guid id)
     {
         var user = await _context.Users.FindAsync(id);
         return user == null ? null : MapToResponseDto(user);
     }
 
-// GET users by Email
+    // GET users by Email
     public async Task<UserResponseDto?> GetUserByEmailAsync(string email)
     {
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == email);
-        
+
         return user == null ? null : MapToResponseDto(user);
     }
 
-// Create new user
+    // Create new user
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
     {
         if (await EmailExistsAsync(createUserDto.Email))
@@ -52,7 +54,7 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email already exists");
         }
 
-            var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$");
+        var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$");
         if (!passwordRegex.IsMatch(createUserDto.Password))
         {
             throw new InvalidOperationException(
@@ -60,7 +62,7 @@ public class UserService : IUserService
             );
         }
 
-        var hashedPassword = await PasswordHasher.HashPasswordAsync(createUserDto.Password);
+        var hashedPassword = await _passwordHasher.HashPasswordAsync(createUserDto.Password);
 
         var user = new User
         {
@@ -77,7 +79,7 @@ public class UserService : IUserService
         return MapToResponseDto(user);
     }
 
-// Update user details
+    // Update user details
     public async Task<UserResponseDto?> UpdateDetailAsync(Guid id, UpdateDetailDto dto)
     {
         var user = await _context.Users.FindAsync(id);
@@ -90,7 +92,7 @@ public class UserService : IUserService
         return MapToResponseDto(user);
     }
 
-// Update user email
+    // Update user email
     public async Task<UserResponseDto?> UpdateEmailAsync(Guid id, UpdateEmailDto dto)
     {
         var user = await _context.Users.FindAsync(id);
@@ -108,7 +110,7 @@ public class UserService : IUserService
         return MapToResponseDto(user);
     }
 
-// Update user password
+    // Update user password
     public async Task<UserResponseDto?> UpdatePasswordAsync(Guid id, UpdatePasswordDto dto)
     {
         var user = await _context.Users.FindAsync(id);
@@ -122,26 +124,26 @@ public class UserService : IUserService
             );
         }
 
-        var oldPasswordValid = await PasswordHasher.VerifyHashedPasswordAsync(dto.OldPassword, user.Password);
+        var oldPasswordValid = await _passwordHasher.VerifyHashedPasswordAsync(dto.OldPassword, user.Password);
         if (!oldPasswordValid)
         {
             throw new InvalidOperationException("Old password is incorrect");
         }
 
-        var newPasswordSameAsOld = await PasswordHasher.VerifyHashedPasswordAsync(dto.NewPassword, user.Password);
+        var newPasswordSameAsOld = await _passwordHasher.VerifyHashedPasswordAsync(dto.NewPassword, user.Password);
         if (newPasswordSameAsOld)
         {
             throw new InvalidOperationException("New password cannot be the same as the old password");
         }
 
-        user.Password = await PasswordHasher.HashPasswordAsync(dto.NewPassword);
+        user.Password = await _passwordHasher.HashPasswordAsync(dto.NewPassword);
         user.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
         await _context.SaveChangesAsync();
         return MapToResponseDto(user);
     }
 
-// Delete user
+    // Delete user
     public async Task<bool> DeleteUserAsync(Guid id)
     {
         var user = await _context.Users.FindAsync(id);
@@ -159,19 +161,19 @@ public class UserService : IUserService
 
     //------------------------------Checking-------------------------------------
 
-// Check user exists by ID
+    // Check user exists by ID
     public async Task<bool> UserExistsAsync(Guid id)
     {
         return await _context.Users.AnyAsync(u => u.Id == id);
     }
 
-// Check user exists by Email
+    // Check user exists by Email
     public async Task<bool> EmailExistsAsync(string email)
     {
         return await _context.Users.AnyAsync(u => u.Email == email);
     }
 
-// Verify user password
+    // Verify user password
     public async Task<bool> VerifyPasswordAsync(string email, string password)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
@@ -180,7 +182,7 @@ public class UserService : IUserService
             throw new InvalidOperationException("Password incorrect or user not found");
         }
 
-        return await PasswordHasher.VerifyHashedPasswordAsync(password, user.Password);
+        return await _passwordHasher.VerifyHashedPasswordAsync(password, user.Password);
     }
 
     private static UserResponseDto MapToResponseDto(User user)
