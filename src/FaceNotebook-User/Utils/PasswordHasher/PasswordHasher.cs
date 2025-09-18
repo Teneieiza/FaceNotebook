@@ -3,9 +3,9 @@ using System.Text;
 
 namespace FaceNoteBook.Utils;
 
-public static class PasswordHasher
+public class PasswordHasher : IPasswordHasher
 {
-    public static async Task<string> HashPasswordAsync(string password)
+    public async Task<string> HashPasswordAsync(string password)
     {
         var salt = new byte[32];
         using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
@@ -30,7 +30,7 @@ public static class PasswordHasher
         return Convert.ToBase64String(combined);
     }
 
-    public static async Task<bool> VerifyHashedPasswordAsync(string password, string hashedPassword)
+    public async Task<bool> VerifyHashedPasswordAsync(string password, string hashedPassword)
     {
         try
         {
